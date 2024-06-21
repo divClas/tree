@@ -1,55 +1,96 @@
 import * as THREE from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
 
 const canvas = document.getElementById("myCanvas");
+
+// Установка размера canvas
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
-  75,
-  canvas.width / canvas.height,
+  59,
+  canvas.clientWidth / canvas.clientHeight,
   0.1,
-  1000
+  50000
 );
+
 
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
-  antialias: true,
+  antialias: false, // Отключение сглаживания для повышения производительности
 });
 
-const loader = new OBJLoader();
-let object;
+// Установка цвета фона на белый
 
-loader.load(
-  "test.obj",
-  function (obj) {
-    object = obj;
-    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    object.children.forEach((child) => {
-      child.material = material;
-    });
-    object.position.set(0, 0, 0);
-    scene.add(object);
-    animate();
+// Настройка OrbitControls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.dampingFactor = 0.05;
+controls.minDistance = 20000;
+controls.maxDistance = 40000;
+controls.maxPolarAngle = Math.PI / 2;
+
+const mtlLoader = new MTLLoader();
+const objLoader = new OBJLoader();
+
+let object; // Объявляем переменную здесь
+
+mtlLoader.load(
+  'texture.mtl',
+  function (materials) {
+    materials.preload();
+    objLoader.setMaterials(materials);
+    objLoader.load(
+      'test.obj',
+      function (obj) {
+        object = obj; // Присваиваем переменной object загруженный объект
+        const group = new THREE.Group();
+        group.add(object);
+        scene.add(group);
+        animate(); // Вызываем animate только после загрузки объекта
+      },
+      function (xhr) {
+        console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+      },
+      function (error) {
+        console.log("An error occurred while loading the model:", error);
+      }
+    );
   },
   function (xhr) {
     console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
   },
   function (error) {
-    console.log("An error occurred while loading the model:", error);
+    console.log("An error occurred while loading the MTL file:", error);
   }
 );
 
-function animate() {
-  requestAnimationFrame(animate);
+// Создание источников света
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);; // Мягкое окружающее освещение
+const pointLight = new THREE.PointLight(0xffffff, 1, 100); // Точечный источник света
+pointLight.position.set(1, 1, 1); // Позиция точечного источника света
 
-  // Обновление камеры
-  camera.position.z = 10;
+// Добавление источников света в сцену
+scene.add(ambientLight);
+scene.add(pointLight);
 
-  // Обновление сцены
-  if (object) {
-    object.rotation.y += 0.01;
-  }
-  const light = new THREE.AmbientLight(0xffffff, 1);
-  scene.add(light);
-  // Отрисовка сцены
+function render() {
   renderer.render(scene, camera);
 }
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  render();
+}
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  camera.aspect = canvas.clientWidth / canvas.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  render(); // Рендерим сцену после изменения размеров окна
+});
+
