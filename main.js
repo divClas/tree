@@ -39,7 +39,7 @@ objLoader.load(
     const group = new THREE.Group();
     group.add(object);
     scene.add(group);
-    group.scale.set(0.5, 0.5, 0.5);
+    group.scale.set(0.8, 0.8, 0.8);
 
     object.traverse(function (child) {
       if (child instanceof THREE.Mesh) {
